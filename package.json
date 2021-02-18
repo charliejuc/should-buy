@@ -16,6 +16,7 @@
     "test:unit": "npm-run-all test --testPathPattern 'unit/.*'"
   },
   "devDependencies": {
+    "@types/csv-parse": "^1.2.2",
     "@types/jest": "^26.0.19",
     "@types/ramda": "^0.27.38",
     "@typescript-eslint/eslint-plugin": "^4.11.1",

@@ -1,54 +1,26 @@
-import R from 'ramda'
-import { config } from './Config'
+import fs from 'fs'
+import csvParse from 'csv-parse'
+import { csvBufferToPurchaseScores } from './Parser'
 
-// exponential range from 1 to n, if exponent is equal to pivot then function returns pivotValue
-// pivot 0 value is not allowed
-const exponentialPivot = R.curry(
-    (pivot: number, pivotValue: number, exponent: number): number =>
-        pivotValue ** (exponent / pivot)
-)
+const filePath = process.argv[2]
+// const filePath = path.join(__dirname, '..', 'files', 'purchases_2021-02.csv')
 
-export const toFixedNumber = R.curry((toFixed: number, value: number): number =>
-    Number(value.toFixed(toFixed))
-)
-const exponentialPivotFixed = R.curry((toFixed: number, pivot: number, pivotValue: number): ((
-    value: number
-) => number) => R.compose(toFixedNumber(toFixed), exponentialPivot(pivot, pivotValue)))
+if (!filePath) {
+    console.error('"filePath" parameter is required')
+    process.exit(1)
+}
 
-const applyExponentialWeight: (x: number, y: number) => number = R.compose(
-    exponentialPivotFixed(2)(30)(25),
-    R.multiply
-)
+const main = async (): Promise<void> => {
+    const fileBuffer = await fs.promises.readFile(filePath)
 
-export const purchaseScoreFactory = (
-    wishScoreWeight: number,
-    workScoreWeight: number,
-    healthScoreWeight: number,
-    salaryDamageScoreWeight: number,
-    newDecisionScoreWeight: number
-) => (
-    wishScore: number,
-    workScore: number,
-    healthScore: number,
-    salaryDamageScore: number,
-    newDecisionScore: number
-): number =>
-    R.useWith(R.subtract, [R.sum, R.sum])([
-        R.multiply(wishScore, wishScoreWeight),
-        R.multiply(workScore, workScoreWeight),
-        applyExponentialWeight(healthScore, healthScoreWeight)
-    ])([
-        applyExponentialWeight(salaryDamageScore, salaryDamageScoreWeight),
-        R.multiply(newDecisionScore, newDecisionScoreWeight)
-    ])
+    const parser = csvParse({
+        delimiter: ',',
+        columns: true
+    })
 
-const purchaseScore: ReturnType<typeof purchaseScoreFactory> = R.compose(
-    toFixedNumber(2),
-    purchaseScoreFactory(
-        config.weights.wishScore,
-        config.weights.workScore,
-        config.weights.healthScore,
-        config.weights.salaryDamageScore,
-        config.weights.newDecisionScore
-    ) as (...args: number[]) => number
-)
+    const results = await csvBufferToPurchaseScores(parser, fileBuffer)
+
+    console.log(results)
+}
+
+main().catch(console.error)
